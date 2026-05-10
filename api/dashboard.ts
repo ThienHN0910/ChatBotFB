@@ -29,7 +29,32 @@ async function verify(req: any) {
 
 export default async function handler(req: any, res: any) {
   // Serve both HTML dashboard and JSON API depending on accept header
-  const user = await verify(req);
+  const cookies = cookie.parse(req.headers.cookie || '');
+  const token = cookies.token;
+  let user: any = null;
+
+  // If no token, show a login button UI for HTML requests, otherwise return 401 JSON
+  if (!token) {
+    const accept = req.headers.accept || '';
+    if (accept.includes('text/html')) {
+      const loginHtml = `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>DNE Dashboard - Login</title></head>
+<body>
+  <h1>DNE Dashboard</h1>
+  <p>Bạn cần đăng nhập bằng Google để truy cập dashboard quản lý.</p>
+  <a href="/api/auth"><button style="padding:10px 16px;font-size:16px;">Login with Google</button></a>
+  <p>If your Google email is not in <code>authorized_users</code>, you will see an access denied message.</p>
+</body>
+</html>`;
+      res.setHeader('Content-Type', 'text/html');
+      return res.status(200).send(loginHtml);
+    }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // If a token exists, verify and ensure the user is authorized
+  user = await verify(req);
   if (!user) return res.status(403).send('Truy cập bị từ chối - Email không có trong danh sách Admin');
 
   if (mongoose.connection.readyState !== 1) await connectDB();

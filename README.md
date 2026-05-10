@@ -53,13 +53,13 @@ Chạy local + Ngrok (ví dụ: cổng 3000)
 
 ```bash
 ngrok http 3000
-# copy forwarding URL và cấu hình webhook Facebook (Webhook -> Add Callback URL)
+# copy forwarding URL và cấu hình webhook Facebook (Webhook -> Add Callback URL -> Callback URL: https://<ngrok-id>.ngrok.io/api/webhook)
 ```
 
 Facebook Webhook
-- Endpoint GET `/webhook` để Facebook xác thực:
-  - `hub.mode`, `hub.verify_token`, `hub.challenge`
-- Endpoint POST `/webhook` nhận message events.
+- Use the webhook endpoint at `/api/webhook` for Vercel (or `/webhook` for local Express).
+- Endpoint GET `/api/webhook` to verify (hub.mode, hub.verify_token, hub.challenge).
+- Endpoint POST `/api/webhook` to receive message events.
 
 Triển khai lên Render / VPS
 - Thiết lập biến môi trường theo `.env.example`
@@ -85,4 +85,3 @@ Replace `admin@example.com` with your Google account email. After this, log in v
 Vercel notes
 - Add environment variables in the Vercel project settings: `MONGO_URI`, `FB_VERIFY_TOKEN`, `FB_PAGE_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `OAUTH_REDIRECT` (optional).
 - Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`.
-

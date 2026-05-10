@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import axios from 'axios';
+import connectDB from './lib/db';
 
 // allow importing the optional Google library without TS errors
 declare module '@google/generative-ai';
@@ -18,11 +19,14 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 if (!MONGO_URI) console.warn('Warning: MONGO_URI is not set');
 if (!FB_PAGE_ACCESS_TOKEN) console.warn('Warning: FB_PAGE_ACCESS_TOKEN is not set');
 
-// Connect to MongoDB
-mongoose
-  .connect(MONGO_URI, {})
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error', err));
+// Connect to MongoDB at startup (explicit, not at module import)
+(async () => {
+  try {
+    if (mongoose.connection.readyState !== 1) await connectDB();
+  } catch (err) {
+    console.error('MongoDB connection error at startup', err);
+  }
+})();
 
 // Knowledge schema as requested: { topic: String, content: String, keywords: [String] }
 const KnowledgeSchema = new mongoose.Schema(

@@ -1,7 +1,8 @@
 import axios from 'axios';
 import cookie from 'cookie';
 import jwt from 'jsonwebtoken';
-import connectDB from '../../src/config/db';
+import connectDB from '../../src/lib/db';
+import mongoose from 'mongoose';
 import AuthorizedUser from '../../src/models/authorized_user.model';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -44,11 +45,11 @@ export default async function handler(req: any, res: any) {
     const user = userRes.data || {};
     const email = user.email;
 
-    await connectDB();
+    if (mongoose.connection.readyState !== 1) await connectDB();
     const found = await AuthorizedUser.findOne({ email }).lean();
     if (!found) {
       console.warn('Unauthorized login attempt', email);
-      return res.status(403).send('Unauthorized');
+      return res.status(403).send('Truy cập bị từ chối - Email không có trong danh sách Admin');
     }
 
     // Create session JWT

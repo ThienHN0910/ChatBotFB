@@ -1,4 +1,5 @@
-import connectDB from '../src/config/db';
+import connectDB from '../src/lib/db';
+import mongoose from 'mongoose';
 import Knowledge from '../src/models/knowledge.model';
 import AuthorizedUser from '../src/models/authorized_user.model';
 import cookie from 'cookie';
@@ -17,7 +18,7 @@ async function verify(req: any) {
   try {
     const payload: any = jwt.verify(token, SESSION_SECRET);
     // optionally verify user still exists
-    await connectDB();
+    if (mongoose.connection.readyState !== 1) await connectDB();
     const allowed = await AuthorizedUser.findOne({ email: payload.email }).lean();
     if (!allowed) return null;
     return payload;
@@ -29,9 +30,9 @@ async function verify(req: any) {
 export default async function handler(req: any, res: any) {
   // Serve both HTML dashboard and JSON API depending on accept header
   const user = await verify(req);
-  if (!user) return unauthorized(res);
+  if (!user) return res.status(403).send('Truy cập bị từ chối - Email không có trong danh sách Admin');
 
-  await connectDB();
+  if (mongoose.connection.readyState !== 1) await connectDB();
 
   try {
     if (req.method === 'GET') {

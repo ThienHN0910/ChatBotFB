@@ -60,15 +60,20 @@ export default async function handler(req: any, res: any) {
       const res = await fetch('/api/dashboard');
       const list = await res.json();
       const container = document.getElementById('list');
-      container.innerHTML = list.map(item=>`<div style="border:1px solid #ddd;padding:8px;margin:6px;">`+
-        `<strong>${item.topic}</strong><div>${item.content}</div><div>keywords: ${item.keywords.join(',')}</div>`+
-        `<button onclick="edit('${item._id}')">Edit</button>`+
-        `<button onclick="del('${item._id}')">Delete</button></div>`).join('');
+      container.innerHTML = list.map(function(item){
+        return '<div style="border:1px solid #ddd;padding:8px;margin:6px;">'
+          + '<strong>' + (item.topic || '') + '</strong>'
+          + '<div>' + (item.content || '') + '</div>'
+          + '<div>keywords: ' + ((item.keywords || []).join(',')) + '</div>'
+          + '<button onclick="edit(\'' + item._id + '\')">Edit</button>'
+          + '<button onclick="del(\'' + item._id + '\')">Delete</button>'
+          + '</div>';
+      }).join('');
     }
     async function post(e){
       e.preventDefault();
       const f = e.target;
-      const data = { topic: f.topic.value, content: f.content.value, keywords: f.keywords.value.split(',').map(s=>s.trim()).filter(Boolean) };
+      const data = { topic: f.topic.value, content: f.content.value, keywords: f.keywords.value.split(',').map(function(s){return s.trim();}).filter(Boolean) };
       await fetch('/api/dashboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
       f.reset(); load();
     }
@@ -84,7 +89,8 @@ export default async function handler(req: any, res: any) {
       await fetch('/api/dashboard',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({_id:id})});
       load();
     }
-    document.getElementById('createForm').addEventListener('submit',post);
+    var form = document.getElementById('createForm');
+    if (form) form.addEventListener('submit',post);
     load();
   </script>
 </body>

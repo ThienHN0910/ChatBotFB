@@ -52,8 +52,9 @@ export default async function handler(req: any, res: any) {
       return res.status(403).send('Truy cập bị từ chối - Email không có trong danh sách Admin');
     }
 
-    // Create session JWT
-    const token = jwt.sign({ email, role: found.role || 'user' }, SESSION_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+    // Create session JWT (cast found to any to satisfy TS in build)
+    const role = (found as any).role || 'user';
+    const token = jwt.sign({ email, role }, SESSION_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 
     res.setHeader('Set-Cookie', cookie.serialize('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 3600 }));
     // Redirect to dashboard

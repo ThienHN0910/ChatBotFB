@@ -32,8 +32,8 @@ Biến môi trường (.env)
 Cài đặt dependencies
 
 ```bash
-npm install axios body-parser dotenv express mongoose request @google/generative-ai
-npm install --save-dev typescript ts-node-dev @types/express @types/node @types/body-parser
+npm install axios dotenv express mongoose jsonwebtoken cookie
+npm install --save-dev typescript ts-node-dev @types/express @types/node
 ```
 
 Chạy ở môi trường phát triển (hot-reload)
@@ -85,3 +85,23 @@ Replace `admin@example.com` with your Google account email. After this, log in v
 Vercel notes
 - Add environment variables in the Vercel project settings: `MONGO_URI`, `FB_VERIFY_TOKEN`, `FB_PAGE_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `OAUTH_REDIRECT` (optional).
 - Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`.
+
+**Seed-admin script & security**
+- **Script file**: `scripts/seed-admin.js` — upserts an admin into the `authorized_users` collection. The repository also exposes a protected endpoint at `/api/seed-admin` which checks `SEED_SECRET`.
+- **Run locally (quick)**: ensure `.env` contains a valid `MONGO_URI`, then run:
+```bash
+node scripts/seed-admin.js
+```
+- **Use protected HTTP endpoint** (optional): call the Vercel function with your secret header or query param:
+```bash
+curl -X POST https://<your-vercel-url>/api/seed-admin \
+	-H "Content-Type: application/json" \
+	-H "x-seed-secret: $SEED_SECRET" \
+	-d '{"email":"hnt.vn.vn@gmail.com"}'
+```
+- **Security recommendations**:
+	- Always set a strong `SEED_SECRET` in your environment and never commit it to source control.
+	- Prefer running `scripts/seed-admin.js` from a secure, offline machine rather than exposing the HTTP endpoint publicly.
+	- If you keep the `/api/seed-admin` endpoint, restrict access, rotate `SEED_SECRET` after use, and audit deployments/secret access.
+	- After the initial setup, consider disabling or removing the endpoint and keeping the script offline for emergency use only.
+- **Note**: The seed script has been executed locally and the email `hnt.vn.vn@gmail.com` was upserted into `authorized_users`. Rotate credentials and secrets as appropriate.

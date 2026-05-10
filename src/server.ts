@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import axios from 'axios';
@@ -135,7 +134,7 @@ async function sendFacebookMessage(psid: string, text: string) {
 
 // Express app and webhook
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
 app.get('/', (_req: Request, res: Response) => res.send('DNE Trùm Động Bot is alive'));
 

@@ -4,9 +4,6 @@ import mongoose from 'mongoose';
 import axios from 'axios';
 import connectDB from './lib/db';
 
-// allow importing the optional Google library without TS errors
-declare module '@google/generative-ai';
-
 dotenv.config();
 
 const PORT = Number(process.env.PORT || 3000);

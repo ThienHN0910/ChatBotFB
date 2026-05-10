@@ -21,6 +21,14 @@ Biến môi trường (.env)
 
 `GOOGLE_API_KEY` — API key hoặc Bearer token để gọi Gemini/Generative AI (cấu hình Google)
 
+`GOOGLE_CLIENT_ID` — Google OAuth Client ID (for Dashboard login)
+
+`GOOGLE_CLIENT_SECRET` — Google OAuth Client Secret
+
+`SESSION_SECRET` — Secret used to sign session JWTs (set a strong value in production)
+
+`VERCEL_URL` or `OAUTH_REDIRECT` — optional override for OAuth redirect URL (default uses https://chat-bot-fb-lime.vercel.app/api/auth/callback)
+
 Cài đặt dependencies
 
 ```bash
@@ -59,3 +67,22 @@ Triển khai lên Render / VPS
 
 Ghi chú
 - Code mẫu gọi Generative AI qua REST endpoint của Google (v1beta2). Tuỳ vào SDK mới, bạn có thể đổi phần `src/services/gemini.service.ts` để dùng `@google/generative-ai` chính thức.
+
+Dashboard & Admin setup
+- The project includes a simple protected dashboard at `/api/dashboard` (you can rewrite `/dashboard` to `/api/dashboard` via Vercel rewrites).
+- Authentication uses Google OAuth2. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your environment (redirect URI must be set to `https://chat-bot-fb-lime.vercel.app/api/auth/callback` or update `OAUTH_REDIRECT`).
+
+Creating the first admin user in MongoDB
+1. Connect to your MongoDB instance (mongo shell, Compass, or Atlas UI).
+2. Switch to the database used by `MONGO_URI` and insert an authorized user:
+
+```js
+db.authorized_users.insertOne({ email: 'admin@example.com', role: 'admin', createdAt: new Date() })
+```
+
+Replace `admin@example.com` with your Google account email. After this, log in via `/api/auth` (which will redirect to Google) and you will be allowed to access the dashboard.
+
+Vercel notes
+- Add environment variables in the Vercel project settings: `MONGO_URI`, `FB_VERIFY_TOKEN`, `FB_PAGE_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `OAUTH_REDIRECT` (optional).
+- Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`.
+

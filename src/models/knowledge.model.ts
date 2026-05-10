@@ -1,27 +1,25 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IKnowledge extends Document {
-  title: string;
+  topic: string;
   content: string;
-  tags: string[];
-  source?: string;
+  keywords: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 const KnowledgeSchema: Schema = new Schema(
   {
-    title: { type: String, required: true },
+    topic: { type: String, required: true },
     content: { type: String, required: true },
-    tags: { type: [String], default: [] },
-    source: { type: String, default: 'manual' }
+    keywords: { type: [String], default: [] }
   },
   { timestamps: true }
 );
 
-KnowledgeSchema.index({ title: 'text', content: 'text', tags: 'text' });
+KnowledgeSchema.index({ topic: 'text', content: 'text', keywords: 'text' });
 
 // Use explicit collection name `knowledge_base` per project requirement
-const Knowledge = mongoose.model<IKnowledge>('Knowledge', KnowledgeSchema, 'knowledge_base');
+const Knowledge = mongoose.models.Knowledge || mongoose.model<IKnowledge>('Knowledge', KnowledgeSchema, 'knowledge_base');
 
 export default Knowledge;

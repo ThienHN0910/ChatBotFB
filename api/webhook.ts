@@ -56,11 +56,63 @@ export default async function handler(req: any, res: any) {
               console.log('Incoming message', { from: senderId, to: recipientId, text: messageText });
 
               const trimmed = String(messageText).trim();
-              const startsWithHoi = trimmed.toLowerCase().startsWith('/hoi');
-              const isDirectToPage = !!(recipientId && process.env.FB_PAGE_ID && String(recipientId) === String(process.env.FB_PAGE_ID));
-              if (!startsWithHoi && !isDirectToPage) continue;
+                  const lower = trimmed.toLowerCase();
+                  const isDirectToPage = !!(recipientId && process.env.FB_PAGE_ID && String(recipientId) === String(process.env.FB_PAGE_ID));
+                  const isCommand = trimmed.startsWith('/');
+                  if (!isCommand && !isDirectToPage) continue;
 
-              const userQuestion = startsWithHoi ? trimmed.slice(4).trim() : trimmed;
+                  // Help command
+                  if (lower === '/h' || lower === '/help') {
+                    const help = 'Trùm Động đây! Các lệnh: /ask <câu hỏi> - hỏi Gemini; /mem - xem danh sách thành viên; /history - xem lịch sử DNE; /h - hiện trợ giúp.';
+                    try {
+                      await sendFacebookMessage(senderId, help);
+                    } catch (e) {
+                      console.error('Failed to send help message', e);
+                    }
+                    continue;
+                  }
+
+                  // /mem - list authorized users
+                  if (lower === '/mem' || lower.startsWith('/mem ')) {
+                    try {
+                      if (mongoose.connection.readyState !== 1) await connectDB();
+                      const users = await (await import('../src/models/authorized_user.model')).default.find({}).lean();
+                      const txt = users.length ? users.map((u: any) => `${u.email} (${u.role||'user'})`).join('\n') : 'Chưa có thành viên nào trong danh sách.';
+                      await sendFacebookMessage(senderId, `Danh sách thành viên:\n${txt}`);
+                    } catch (e) {
+                      console.error('Failed to list members', e);
+                      await sendFacebookMessage(senderId, 'Không lấy được danh sách thành viên, thử lại sau.');
+                    }
+                    continue;
+                  }
+
+                  // /history - show history entries from knowledge_base
+                  if (lower === '/history' || lower.startsWith('/history ')) {
+                    try {
+                      if (mongoose.connection.readyState !== 1) await connectDB();
+                      const qRegex = /lich|history|lịch/ig;
+                      const docs = await Knowledge.find({ $or: [{ topic: qRegex }, { content: qRegex }, { keywords: { $in: ['history', 'lich', 'lịch'] } }] }).limit(5).lean();
+                      if (!docs || docs.length === 0) {
+                        await sendFacebookMessage(senderId, 'Không tìm thấy thông tin lịch sử.');
+                      } else {
+                        const txt = docs.map((d: any) => `- ${d.topic}: ${String(d.content).slice(0, 200)}...`).join('\n');
+                        await sendFacebookMessage(senderId, `Lịch sử / thông tin liên quan:\n${txt}`);
+                      }
+                    } catch (e) {
+                      console.error('History command error', e);
+                      await sendFacebookMessage(senderId, 'Lấy lịch sử thất bại, thử lại sau.');
+                    }
+                    continue;
+                  }
+
+                  // /ask or /hoi -> ask Gemini
+                  let userQuestion = trimmed;
+                  if (lower.startsWith('/ask ')) userQuestion = trimmed.slice(5).trim();
+                  else if (lower.startsWith('/hoi ')) userQuestion = trimmed.slice(4).trim();
+                  else if (lower === '/ask' || lower === '/hoi') {
+                    await sendFacebookMessage(senderId, 'Gửi câu hỏi theo cú pháp: /ask <câu hỏi>');
+                    continue;
+                  }
 
               // Tokenize and search keywords
               const tokens = userQuestion

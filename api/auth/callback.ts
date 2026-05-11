@@ -58,7 +58,7 @@ export default async function handler(req: any, res: any) {
 
     res.setHeader('Set-Cookie', cookie.serialize('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 3600 }));
     // Redirect to dashboard
-    res.writeHead(302, { Location: '/api/dashboard' });
+    res.writeHead(302, { Location: '/dashboard' });
     res.end();
   } catch (err: any) {
     console.error('OAuth callback error:', err?.response?.data || err?.message || err);

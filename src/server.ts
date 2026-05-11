@@ -1,7 +1,5 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import connectDB from './lib/db';
 import { processWebhookEvent } from './controllers/webhook.controller';
 import { getPolicyHtml, getTermHtml } from './controllers/pages';
 
@@ -12,15 +10,6 @@ const MONGO_URI = process.env.MONGO_URI || '';
 const FB_VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || '';
 
 if (!MONGO_URI) console.warn('Warning: MONGO_URI is not set');
-
-// Connect to MongoDB at startup
-(async () => {
-  try {
-    if (mongoose.connection.readyState !== 1) await connectDB();
-  } catch (err) {
-    console.error('MongoDB connection error at startup', err);
-  }
-})();
 
 const app = express();
 app.use(express.json());

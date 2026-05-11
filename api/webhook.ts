@@ -1,6 +1,7 @@
 import connectDB from '../src/lib/db';
 import mongoose from 'mongoose';
 import Knowledge from '../src/models/knowledge.model';
+import Message from '../src/models/message.model';
 import { generateAnswer } from '../src/services/gemini.service';
 import axios from 'axios';
 
@@ -15,6 +16,17 @@ async function sendFacebookMessage(psid: string, text: string) {
   } catch (err: any) {
     console.error('Failed to send FB message:', err?.response?.data || err?.message || err);
     throw err;
+  }
+}
+
+async function getFacebookName(psid: string) {
+  if (!FB_PAGE_ACCESS_TOKEN) return null;
+  try {
+    const url = `https://graph.facebook.com/${psid}?fields=name&access_token=${FB_PAGE_ACCESS_TOKEN}`;
+    const r = await axios.get(url);
+    return r.data?.name || null;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -56,63 +68,167 @@ export default async function handler(req: any, res: any) {
               console.log('Incoming message', { from: senderId, to: recipientId, text: messageText });
 
               const trimmed = String(messageText).trim();
-                  const lower = trimmed.toLowerCase();
-                  const isDirectToPage = !!(recipientId && process.env.FB_PAGE_ID && String(recipientId) === String(process.env.FB_PAGE_ID));
-                  const isCommand = trimmed.startsWith('/');
-                  if (!isCommand && !isDirectToPage) continue;
+              const lower = trimmed.toLowerCase();
+              const isDirectToPage = !!(recipientId && process.env.FB_PAGE_ID && String(recipientId) === String(process.env.FB_PAGE_ID));
+              const isCommand = trimmed.startsWith('/');
+              if (!isCommand && !isDirectToPage) continue;
 
-                  // Help command
-                  if (lower === '/h' || lower === '/help') {
-                    const help = 'Trùm Động đây! Các lệnh: /ask <câu hỏi> - hỏi Gemini; /mem - xem danh sách thành viên; /history - xem lịch sử DNE; /h - hiện trợ giúp.';
-                    try {
-                      await sendFacebookMessage(senderId, help);
-                    } catch (e) {
-                      console.error('Failed to send help message', e);
-                    }
-                    continue;
-                  }
+              // persist message for analytics/history
+              try {
+                const name = await getFacebookName(senderId).catch(()=>null);
+                await Message.create({ senderId, senderName: name || undefined, text: messageText });
+              } catch (e) {
+                console.error('Failed to record message', e);
+              }
 
-                  // /mem - list authorized users
-                  if (lower === '/mem' || lower.startsWith('/mem ')) {
-                    try {
-                      if (mongoose.connection.readyState !== 1) await connectDB();
-                      const users = await (await import('../src/models/authorized_user.model')).default.find({}).lean();
-                      const txt = users.length ? users.map((u: any) => `${u.email} (${u.role||'user'})`).join('\n') : 'Chưa có thành viên nào trong danh sách.';
-                      await sendFacebookMessage(senderId, `Danh sách thành viên:\n${txt}`);
-                    } catch (e) {
-                      console.error('Failed to list members', e);
-                      await sendFacebookMessage(senderId, 'Không lấy được danh sách thành viên, thử lại sau.');
-                    }
-                    continue;
-                  }
+              // HELP - list commands (English commands with Vietnamese explanation)
+              if (lower === '/h' || lower === '/help') {
+                const helpLines = [
+                  '/ask <question> — Hỏi Gemini (RAG + AI). Ví dụ: /ask who won last match? (viết tiếng Việt/Anh đều OK)',
+                  '/time or /gio — Trả về giờ hệ thống hiện tại (kèm câu cảm thán theo khung giờ).',
+                  '/ping — Kiểm tra độ trễ; bot trả về Pong và ms.',
+                  '/fb or /link — Trả về các liên kết quan trọng của Động (Group, Website, Youtube, Discord).',
+                  '/me — Hiển thị tên Facebook và ID của bạn.',
+                  '/keo — Tỉ lệ thắng kèo hôm nay (random 1-100%).',
+                  '/random <min> <max> — Sinh số ngẫu nhiên trong khoảng.',
+                  '/pick <opt1> | <opt2> [... ] — Chọn ngẫu nhiên giữa các phương án.',
+                  '/thinh — Bốc 1 câu thả thính/ngầu ngầu ngầu.',
+                  '/top — Xem các sender gửi nhiều tin nhất (top).',
+                  '/mem — Số thành viên đã từng nhắn cho bot (unique sender count).',
+                  '/history — Lấy 5-10 tin nhắn gần nhất của bạn.'
+                ];
+                try { await sendFacebookMessage(senderId, helpLines.join('\n')); } catch(e){ console.error('Failed to send help', e); }
+                continue;
+              }
 
-                  // /history - show history entries from knowledge_base
-                  if (lower === '/history' || lower.startsWith('/history ')) {
-                    try {
-                      if (mongoose.connection.readyState !== 1) await connectDB();
-                      const qRegex = /lich|history|lịch/ig;
-                      const docs = await Knowledge.find({ $or: [{ topic: qRegex }, { content: qRegex }, { keywords: { $in: ['history', 'lich', 'lịch'] } }] }).limit(5).lean();
-                      if (!docs || docs.length === 0) {
-                        await sendFacebookMessage(senderId, 'Không tìm thấy thông tin lịch sử.');
-                      } else {
-                        const txt = docs.map((d: any) => `- ${d.topic}: ${String(d.content).slice(0, 200)}...`).join('\n');
-                        await sendFacebookMessage(senderId, `Lịch sử / thông tin liên quan:\n${txt}`);
-                      }
-                    } catch (e) {
-                      console.error('History command error', e);
-                      await sendFacebookMessage(senderId, 'Lấy lịch sử thất bại, thử lại sau.');
-                    }
-                    continue;
-                  }
+              // /time or /gio
+              if (lower === '/time' || lower === '/gio') {
+                try {
+                  const now = new Date();
+                  const hh = now.getHours();
+                  const mm = String(now.getMinutes()).padStart(2,'0');
+                  const ss = String(now.getSeconds()).padStart(2,'0');
+                  let exclaim = '';
+                  if (hh >=0 && hh <5) exclaim = 'Ngủ đi các con nghiện.';
+                  else if (hh >=5 && hh <7) exclaim = 'Sáng rồi, cà phê rồi leo rank.';
+                  else if (hh >=7 && hh <10) exclaim = 'Dậy leo rank thôi!';
+                  else if (hh === 12) exclaim = 'Trưa rồi, ăn tí rồi gank tiếp.';
+                  else if (hh >=18 && hh <22) exclaim = 'Tối rồi, chuẩn bị combat.';
+                  else exclaim = '';
+                  await sendFacebookMessage(senderId, `Bây giờ là ${hh}:${mm}:${ss}. ${exclaim}`);
+                } catch (e) { console.error('time cmd error', e); }
+                continue;
+              }
 
-                  // /ask or /hoi -> ask Gemini
-                  let userQuestion = trimmed;
-                  if (lower.startsWith('/ask ')) userQuestion = trimmed.slice(5).trim();
-                  else if (lower.startsWith('/hoi ')) userQuestion = trimmed.slice(4).trim();
-                  else if (lower === '/ask' || lower === '/hoi') {
-                    await sendFacebookMessage(senderId, 'Gửi câu hỏi theo cú pháp: /ask <câu hỏi>');
-                    continue;
-                  }
+              // /ping
+              if (lower === '/ping') {
+                try {
+                  const ts = event.timestamp || Date.now();
+                  const latency = Math.max(0, Date.now() - ts);
+                  await sendFacebookMessage(senderId, `Pong! 🏓 ${latency}ms`);
+                } catch (e) { console.error('ping error', e); }
+                continue;
+              }
+
+              // /fb or /link
+              if (lower === '/fb' || lower === '/link') {
+                try {
+                  const group = process.env.GROUP_LINK || 'https://facebook.com/yourgroup';
+                  const site = process.env.WEBSITE_LINK || 'https://example.com';
+                  const yt = process.env.YOUTUBE_LINK || 'https://youtube.com';
+                  const discord = process.env.DISCORD_LINK || 'https://discord.gg/yourserver';
+                  const txt = `Links:\nGroup: ${group}\nWebsite: ${site}\nYoutube: ${yt}\nDiscord: ${discord}`;
+                  await sendFacebookMessage(senderId, txt);
+                } catch (e) { console.error('link error', e); }
+                continue;
+              }
+
+              // /me
+              if (lower === '/me') {
+                try {
+                  const name = await getFacebookName(senderId).catch(()=>null);
+                  const txt = `Bạn là: ${name||'Facebook user'}. ID của bạn: ${senderId}. Bạn đang ở trong Động Nghiện!`;
+                  await sendFacebookMessage(senderId, txt);
+                } catch (e) { console.error('/me error', e); }
+                continue;
+              }
+
+              // Random group: /keo, /random, /pick, /thinh
+              if (lower === '/keo') {
+                const val = Math.floor(Math.random()*100)+1;
+                await sendFacebookMessage(senderId, `Tỉ lệ thắng chuỗi hôm nay của bạn là: ${val}%. Vào game ngay!`);
+                continue;
+              }
+
+              if (lower.startsWith('/random ')) {
+                try {
+                  const parts = trimmed.split(/\s+/).slice(1);
+                  const min = parseInt(parts[0],10); const max = parseInt(parts[1],10);
+                  if (Number.isNaN(min) || Number.isNaN(max)) { await sendFacebookMessage(senderId, 'Usage: /random <min> <max>'); continue; }
+                  const a = Math.min(min,max); const b = Math.max(min,max);
+                  const r = Math.floor(Math.random()*(b-a+1))+a;
+                  await sendFacebookMessage(senderId, `Random: ${r}`);
+                } catch(e){ console.error('random error', e); }
+                continue;
+              }
+
+              if (lower.startsWith('/pick ')) {
+                try {
+                  const tail = trimmed.slice(6).trim();
+                  const opts = tail.split('|').map(s=>s.trim()).filter(Boolean);
+                  if (!opts.length) { await sendFacebookMessage(senderId,'Usage: /pick opt1 | opt2 | opt3'); continue; }
+                  const pick = opts[Math.floor(Math.random()*opts.length)];
+                  await sendFacebookMessage(senderId, `Trùm Động khuyên bạn nên: '${pick}'`);
+                } catch(e){ console.error('pick error', e); }
+                continue;
+              }
+
+              if (lower === '/thinh') {
+                const lines = [
+                  'Em như mạng lag: cứ bị disconnect trong tim anh.',
+                  'Đi với anh không cần Google Maps, anh dẫn đường vào tim em.',
+                  'Anh có thể không phải là nhất nhưng chắc chắn là duy nhất với em.'
+                ];
+                const pick = lines[Math.floor(Math.random()*lines.length)];
+                await sendFacebookMessage(senderId, pick);
+                continue;
+              }
+
+              // Power queries: /top, /mem, /history
+              if (lower === '/top') {
+                try {
+                  if (mongoose.connection.readyState !== 1) await connectDB();
+                  const agg = await Message.aggregate([
+                    { $group: { _id: '$senderId', count: { $sum: 1 }, name: { $first: '$senderName' } } },
+                    { $sort: { count: -1 } },
+                    { $limit: 10 }
+                  ]);
+                  if (!agg || !agg.length) { await sendFacebookMessage(senderId, 'Chưa có dữ liệu thống kê.'); continue; }
+                  const lines = agg.map((r:any,i:number)=>`${i+1}. ${r.name||r._id}: ${r.count} tin nhắn`);
+                  await sendFacebookMessage(senderId, `Top gửi tin nhắn:\n${lines.join('\n')}`);
+                } catch(e){ console.error('top error', e); await sendFacebookMessage(senderId,'Lấy top thất bại.'); }
+                continue;
+              }
+
+              if (lower === '/mem') {
+                try {
+                  if (mongoose.connection.readyState !== 1) await connectDB();
+                  const distinct = await Message.distinct('senderId');
+                  await sendFacebookMessage(senderId, `Số thành viên đã từng nhắn cho bot: ${distinct.length}`);
+                } catch(e){ console.error('mem error', e); await sendFacebookMessage(senderId,'Lấy số thành viên thất bại.'); }
+                continue;
+              }
+
+              if (lower === '/history' || lower.startsWith('/history ')) {
+                try {
+                  if (mongoose.connection.readyState !== 1) await connectDB();
+                  const msgs = await Message.find({ senderId }).sort({ createdAt: -1 }).limit(10).lean();
+                  if (!msgs || msgs.length===0) { await sendFacebookMessage(senderId,'Không tìm thấy lịch sử nhắn tin của bạn.'); continue; }
+                  const lines = msgs.map((m:any)=>`${new Date(m.createdAt||m._id.getTimestamp()).toLocaleString()}: ${String(m.text).slice(0,200)}`);
+                  await sendFacebookMessage(senderId, `Lịch sử tin nhắn của bạn:\n${lines.join('\n')}`);
+                } catch(e){ console.error('history error', e); await sendFacebookMessage(senderId,'Lấy lịch sử thất bại.'); }
+                continue;
+              }
 
               // Tokenize and search keywords
               const tokens = userQuestion

@@ -230,6 +230,13 @@ export default async function handler(req: any, res: any) {
                 continue;
               }
 
+              // Determine question text: /ask <...> or direct message to page
+              let userQuestion = trimmed;
+              if (lower.startsWith('/ask ')) userQuestion = trimmed.slice(5).trim();
+              else if (lower === '/ask') { await sendFacebookMessage(senderId, 'Gửi câu hỏi theo cú pháp: /ask <câu hỏi>'); continue; }
+              else if (!isCommand && isDirectToPage) userQuestion = trimmed;
+              else continue;
+
               // Tokenize and search keywords
               const tokens = userQuestion
                 .toLowerCase()

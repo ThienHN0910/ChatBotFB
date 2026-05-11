@@ -56,7 +56,7 @@ builder.Services.AddSingleton<IBotCommandHandler, MemoryStatsCommandHandler>();
 builder.Services.AddSingleton<IBotCommandHandler, HistoryCommandHandler>();
 builder.Services.AddSingleton<IBotCommandHandler, TopCommandHandler>();
 builder.Services.AddSingleton<BotCommandDispatcher>();
-builder.Services.AddSingleton<BotMessageProcessor>();
+builder.Services.AddScoped<IBotMessageProcessor, BotMessageProcessor>();
 
 var app = builder.Build();
 

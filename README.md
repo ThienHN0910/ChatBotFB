@@ -84,14 +84,16 @@ Replace `admin@example.com` with your Google account email. After this, log in v
 
 Vercel notes
 - Add environment variables in the Vercel project settings: `MONGO_URI`, `FB_VERIFY_TOKEN`, `FB_PAGE_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `OAUTH_REDIRECT` (optional).
-- Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`.
+- Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`, `/policy` to `/api/policy`, and `/term` to `/api/term`.
+- The bot includes built-in endpoints for `/policy` (Privacy Policy) and `/term` (Terms of Service).
 
 Commands (bot)
 - `/h` or `/help`: show help and available commands.
 - `/ask <question>`: ask Gemini (RAG+Gen) using knowledge base as context.
 - `/hoi <question>`: alias of `/ask` kept for backwards compatibility.
-- `/mem`: list members from the `authorized_users` collection.
-- `/history`: show knowledge entries that look like historical records (searches `topic`, `content`, and `keywords`).
+- `/mem`: thống kê số lượng thành viên đã tương tác với bot (từ Messages).
+- `/top`: xem top những người nhắn tin nhiều nhất cho bot.
+- `/history`: xem lại 10 tin nhắn gần nhất của chính bạn.
 
 Dashboard
 - Visit `/dashboard` (or `/api/dashboard`) to open the admin UI. If not logged in you'll see a **Login with Google** button.

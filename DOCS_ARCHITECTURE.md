@@ -5,8 +5,10 @@ Overview
 - Main concerns: webhook handling (RAG + Gemini), MongoDB-based knowledge store, Google OAuth-protected dashboard, and user management.
 
 Project layout (key files)
-- `api/webhook.ts` — Vercel serverless webhook handler (production entry).
-- `src/controllers/webhook.controller.ts` — Express webhook handler (for local dev server).
+- `api/webhook.ts` — Vercel serverless webhook handler (calls controller).
+- `src/controllers/webhook.controller.ts` — Core webhook logic used by both Vercel and Express.
+- `src/commands/` — Command handlers (ask, history, mem, top, time, etc.) managed via `index.ts`.
+- `api/policy.ts`, `api/term.ts` — Serverless endpoints for Privacy Policy and Terms of Service.
 - `api/dashboard.ts` — Serverless dashboard endpoint (HTML UI and JSON CRUD API).
 - `api/auth.ts` and `api/auth/callback.ts` — Google OAuth start + callback.
 - `api/seed-admin.ts` — protected seed endpoint for creating an admin (requires `SEED_SECRET`).
@@ -32,8 +34,9 @@ Commands supported by bot
 - `/h` or `/help` — show help text.
 - `/ask <question>` — send question to Gemini (RAG uses `knowledge_base`).
 - `/hoi <question>` — alias for `/ask` (backwards compatibility).
-- `/mem` — list authorized users.
-- `/history` — list knowledge entries related to history.
+- `/mem` — count total distinct users interacting with bot.
+- `/top` — leaderboard of top interacting users.
+- `/history` — show user's recent messages.
 
 Testing & deployment
 - Local dev: `npm run dev` (uses `src/server.ts` + Express). Use `ngrok` to expose local webhook for Facebook testing.

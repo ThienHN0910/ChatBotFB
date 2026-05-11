@@ -24,7 +24,7 @@ public sealed class FacebookGraphService
     {
         EnsureConfigured();
 
-        var requestUri = $"{_options.GraphApiVersion}/me/messages?access_token={Uri.EscapeDataString(_options.PageAccessToken)}";
+        var requestUri = $"https://graph.facebook.com/{_options.GraphApiVersion}/me/messages?access_token={Uri.EscapeDataString(_options.PageAccessToken)}";
         var payload = new
         {
             recipient = new { id = psid },

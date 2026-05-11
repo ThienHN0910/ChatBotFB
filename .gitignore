@@ -143,3 +143,10 @@ vite.config.ts.timestamp-*
 .vite/
 
 .vercel
+
+publish/
+publishprofiles/
+bin/
+obj/
+.vs/
+.vscode/

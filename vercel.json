@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "rewrites": [
-    { "source": "/dashboard", "destination": "/api/dashboard" },
-    { "source": "/dashboard/(.*)", "destination": "/api/dashboard" },
-    { "source": "/policy", "destination": "/api/policy" },
-    { "source": "/term", "destination": "/api/term" }
-  ]
-}

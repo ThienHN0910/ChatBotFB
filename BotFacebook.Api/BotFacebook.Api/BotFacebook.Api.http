@@ -1,0 +1,6 @@
+@BotFacebook.Api_HostAddress = http://localhost:5234
+
+GET {{BotFacebook.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

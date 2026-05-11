@@ -18,8 +18,8 @@ public sealed class LogoutController : ControllerBase
     [HttpGet]
     public IActionResult Logout()
     {
-        Response.Cookies.Delete("token", new CookieOptions { Path = "/" });
-        Response.Cookies.Delete("oauth_state", new CookieOptions { Path = "/" });
+        Response.Cookies.Delete("token", new CookieOptions { Path = "/", SameSite = SameSiteMode.None, Secure = Request.IsHttps });
+        Response.Cookies.Delete("oauth_state", new CookieOptions { Path = "/", SameSite = SameSiteMode.Lax, Secure = Request.IsHttps });
         var frontendBaseUrl = _authOptions.Value.FrontendBaseUrl.TrimEnd('/');
         return Redirect($"{frontendBaseUrl}/dashboard");
     }

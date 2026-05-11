@@ -87,3 +87,10 @@ Frontend config:
 - Keep the frontend origin in `Auth__FrontendBaseUrl` so login redirects and CORS stay aligned.
 - If the backend and frontend are deployed separately, the Vue app must point `VITE_API_BASE_URL` at the backend host.
 - The frontend does not replace the webhook endpoint. The webhook still lives in ASP.NET Core.
+- Current production hosts:
+	- Frontend: `https://chat-bot-fb-lime.vercel.app`
+	- Backend: `https://chatbotfb-production.up.railway.app`
+- Smoke test after deploy:
+	- `GET /` on Railway should return the API health payload.
+	- `GET /api/auth` on Railway should redirect to Google, not 404.
+	- `GET /api/dashboard` without a cookie should return 401, not 404.

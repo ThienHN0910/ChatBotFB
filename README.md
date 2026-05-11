@@ -53,6 +53,11 @@ Example:
 
 - `VITE_API_BASE_URL=https://your-botfb-api-host`
 
+Current production split:
+
+- Frontend: `https://chat-bot-fb-lime.vercel.app`
+- Backend: `https://chatbotfb-production.up.railway.app`
+
 If you deploy frontend and backend on the same origin, the app can still fall back to relative `/api/...` URLs when `VITE_API_BASE_URL` is omitted.
 
 Run the frontend:
@@ -75,3 +80,4 @@ npm run build
 - The old Node/Express source was removed from the root of this repo.
 - The dashboard login flow redirects back to the Vue route `/dashboard`.
 - `FrontendBaseUrl` in the backend auth settings must match the Vue app origin for CORS and post-login redirects.
+- If `GET /api/auth` returns 404 on Railway, the backend deployment is not running this repo's ASP.NET app and must be redeployed from `BotFacebook.Api/BotFacebook.Api.csproj`.

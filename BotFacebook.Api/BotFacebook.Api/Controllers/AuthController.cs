@@ -80,7 +80,7 @@ public sealed class AuthController : ControllerBase
             {
                 HttpOnly = true,
                 Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Path = "/",
                 MaxAge = TimeSpan.FromDays(7)
             });

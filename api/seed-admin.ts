@@ -8,7 +8,10 @@ import AuthorizedUser from '../src/models/authorized_user.model';
  */
 export default async function handler(req: any, res: any) {
   try {
+    // Guard: allow seed only when SEED_ENABLED=true and SEED_SECRET is set
+    const SEED_ENABLED = String(process.env.SEED_ENABLED || 'false').toLowerCase() === 'true';
     const SEED_SECRET = process.env.SEED_SECRET;
+    if (!SEED_ENABLED) return res.status(404).send('Not found');
     if (!SEED_SECRET) return res.status(500).send('SEED_SECRET not configured');
 
     const provided = (req.headers['x-seed-secret'] as string) || req.query?.secret || req.body?.secret;

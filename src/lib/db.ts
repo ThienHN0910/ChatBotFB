@@ -21,10 +21,14 @@ export async function connectDB() {
 
   if (!cached.promise) {
     mongoose.set('strictQuery', false);
+    // disable buffering so operations fail fast when not connected
+    mongoose.set('bufferCommands', false);
     cached.promise = mongoose
       .connect(MONGO_URI, {
         serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10,
+        family: 4
       })
       .then((m) => m as typeof mongoose);
   }

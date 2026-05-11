@@ -19,3 +19,15 @@ export async function sendTextMessage(psid: string, text: string) {
 }
 
 export default { sendTextMessage };
+
+export async function getUserName(psid: string) {
+  const token = process.env.FB_PAGE_ACCESS_TOKEN || config.fbPageAccessToken;
+  if (!token) return null;
+  try {
+    const url = `https://graph.facebook.com/${psid}?fields=name&access_token=${token}`;
+    const r = await axios.get(url);
+    return r.data?.name || null;
+  } catch (e) {
+    return null;
+  }
+}

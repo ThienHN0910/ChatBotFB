@@ -4,6 +4,8 @@ import Knowledge from '../src/models/knowledge.model';
 import Message from '../src/models/message.model';
 import { generateAnswer } from '../src/services/gemini.service';
 import axios from 'axios';
+import { dispatch } from '../src/commands';
+import { getUserName } from '../src/services/facebook.service';
 
 const FB_VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || '';
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
@@ -19,16 +21,7 @@ async function sendFacebookMessage(psid: string, text: string) {
   }
 }
 
-async function getFacebookName(psid: string) {
-  if (!FB_PAGE_ACCESS_TOKEN) return null;
-  try {
-    const url = `https://graph.facebook.com/${psid}?fields=name&access_token=${FB_PAGE_ACCESS_TOKEN}`;
-    const r = await axios.get(url);
-    return r.data?.name || null;
-  } catch (e) {
-    return null;
-  }
-}
+// prefer using src/services/facebook.service.getUserName
 
 export default async function handler(req: any, res: any) {
   try {
@@ -75,123 +68,31 @@ export default async function handler(req: any, res: any) {
 
               // persist message for analytics/history
               try {
-                const name = await getFacebookName(senderId).catch(()=>null);
+                const name = await getUserName(senderId).catch(() => null);
                 await Message.create({ senderId, senderName: name || undefined, text: messageText });
               } catch (e) {
                 console.error('Failed to record message', e);
               }
 
-              // HELP - list commands (English commands with Vietnamese explanation)
-              if (lower === '/h' || lower === '/help') {
-                const helpLines = [
-                  '/ask <question> — Hỏi Gemini (RAG + AI). Ví dụ: /ask who won last match? (viết tiếng Việt/Anh đều OK)',
-                  '/time or /gio — Trả về giờ hệ thống hiện tại (kèm câu cảm thán theo khung giờ).',
-                  '/ping — Kiểm tra độ trễ; bot trả về Pong và ms.',
-                  '/fb or /link — Trả về các liên kết quan trọng của Động (Group, Website, Youtube, Discord).',
-                  '/me — Hiển thị tên Facebook và ID của bạn.',
-                  '/keo — Tỉ lệ thắng kèo hôm nay (random 1-100%).',
-                  '/random <min> <max> — Sinh số ngẫu nhiên trong khoảng.',
-                  '/pick <opt1> | <opt2> [... ] — Chọn ngẫu nhiên giữa các phương án.',
-                  '/thinh — Bốc 1 câu thả thính/ngầu ngầu ngầu.',
-                  '/top — Xem các sender gửi nhiều tin nhất (top).',
-                  '/mem — Số thành viên đã từng nhắn cho bot (unique sender count).',
-                  '/history — Lấy 5-10 tin nhắn gần nhất của bạn.'
-                ];
-                try { await sendFacebookMessage(senderId, helpLines.join('\n')); } catch(e){ console.error('Failed to send help', e); }
-                continue;
-              }
-
-              // /time or /gio
-              if (lower === '/time' || lower === '/gio') {
-                try {
-                  const now = new Date();
-                  const hh = now.getHours();
-                  const mm = String(now.getMinutes()).padStart(2,'0');
-                  const ss = String(now.getSeconds()).padStart(2,'0');
-                  let exclaim = '';
-                  if (hh >=0 && hh <5) exclaim = 'Ngủ đi các con nghiện.';
-                  else if (hh >=5 && hh <7) exclaim = 'Sáng rồi, cà phê rồi leo rank.';
-                  else if (hh >=7 && hh <10) exclaim = 'Dậy leo rank thôi!';
-                  else if (hh === 12) exclaim = 'Trưa rồi, ăn tí rồi gank tiếp.';
-                  else if (hh >=18 && hh <22) exclaim = 'Tối rồi, chuẩn bị combat.';
-                  else exclaim = '';
-                  await sendFacebookMessage(senderId, `Bây giờ là ${hh}:${mm}:${ss}. ${exclaim}`);
-                } catch (e) { console.error('time cmd error', e); }
-                continue;
-              }
-
-              // /ping
-              if (lower === '/ping') {
-                try {
-                  const ts = event.timestamp || Date.now();
-                  const latency = Math.max(0, Date.now() - ts);
-                  await sendFacebookMessage(senderId, `Pong! 🏓 ${latency}ms`);
-                } catch (e) { console.error('ping error', e); }
-                continue;
-              }
-
-              // /fb or /link
-              if (lower === '/fb' || lower === '/link') {
-                try {
-                  const group = process.env.GROUP_LINK || 'https://facebook.com/yourgroup';
-                  const site = process.env.WEBSITE_LINK || 'https://example.com';
-                  const yt = process.env.YOUTUBE_LINK || 'https://youtube.com';
-                  const discord = process.env.DISCORD_LINK || 'https://discord.gg/yourserver';
-                  const txt = `Links:\nGroup: ${group}\nWebsite: ${site}\nYoutube: ${yt}\nDiscord: ${discord}`;
-                  await sendFacebookMessage(senderId, txt);
-                } catch (e) { console.error('link error', e); }
-                continue;
-              }
-
-              // /me
-              if (lower === '/me') {
-                try {
-                  const name = await getFacebookName(senderId).catch(()=>null);
-                  const txt = `Bạn là: ${name||'Facebook user'}. ID của bạn: ${senderId}. Bạn đang ở trong Động Nghiện!`;
-                  await sendFacebookMessage(senderId, txt);
-                } catch (e) { console.error('/me error', e); }
-                continue;
-              }
-
-              // Random group: /keo, /random, /pick, /thinh
-              if (lower === '/keo') {
-                const val = Math.floor(Math.random()*100)+1;
-                await sendFacebookMessage(senderId, `Tỉ lệ thắng chuỗi hôm nay của bạn là: ${val}%. Vào game ngay!`);
-                continue;
-              }
-
-              if (lower.startsWith('/random ')) {
-                try {
-                  const parts = trimmed.split(/\s+/).slice(1);
-                  const min = parseInt(parts[0],10); const max = parseInt(parts[1],10);
-                  if (Number.isNaN(min) || Number.isNaN(max)) { await sendFacebookMessage(senderId, 'Usage: /random <min> <max>'); continue; }
-                  const a = Math.min(min,max); const b = Math.max(min,max);
-                  const r = Math.floor(Math.random()*(b-a+1))+a;
-                  await sendFacebookMessage(senderId, `Random: ${r}`);
-                } catch(e){ console.error('random error', e); }
-                continue;
-              }
-
-              if (lower.startsWith('/pick ')) {
-                try {
-                  const tail = trimmed.slice(6).trim();
-                  const opts = tail.split('|').map(s=>s.trim()).filter(Boolean);
-                  if (!opts.length) { await sendFacebookMessage(senderId,'Usage: /pick opt1 | opt2 | opt3'); continue; }
-                  const pick = opts[Math.floor(Math.random()*opts.length)];
-                  await sendFacebookMessage(senderId, `Trùm Động khuyên bạn nên: '${pick}'`);
-                } catch(e){ console.error('pick error', e); }
-                continue;
-              }
-
-              if (lower === '/thinh') {
-                const lines = [
-                  'Em như mạng lag: cứ bị disconnect trong tim anh.',
-                  'Đi với anh không cần Google Maps, anh dẫn đường vào tim em.',
-                  'Anh có thể không phải là nhất nhưng chắc chắn là duy nhất với em.'
-                ];
-                const pick = lines[Math.floor(Math.random()*lines.length)];
-                await sendFacebookMessage(senderId, pick);
-                continue;
+              // Dispatch command to modular handlers
+              try {
+                const token = trimmed.split(/\s+/)[0] || '';
+                const commandName = token.startsWith('/') ? token.slice(1) : token;
+                const args = trimmed.split(/\s+/).slice(1);
+                await dispatch(commandName, args, {
+                  senderId,
+                  messageText,
+                  args,
+                  event,
+                  send: async (t: string) => await sendFacebookMessage(senderId, t),
+                  connectDB,
+                  Knowledge,
+                  Message,
+                  generateAnswer,
+                  getUserName: async (id: string) => await getUserName(id)
+                });
+              } catch (e) {
+                console.error('dispatch error', e);
               }
 
               // Power queries: /top, /mem, /history

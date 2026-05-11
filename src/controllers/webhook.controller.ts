@@ -10,9 +10,11 @@ import axios from 'axios';
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 
 let PAGE_ID: string | null = process.env.FB_PAGE_ID || null;
+let hasTriedFetchPageId = false;
 
 async function fetchPageId() {
-  if (PAGE_ID || !FB_PAGE_ACCESS_TOKEN) return PAGE_ID;
+  if (PAGE_ID || !FB_PAGE_ACCESS_TOKEN || hasTriedFetchPageId) return PAGE_ID;
+  hasTriedFetchPageId = true;
   try {
     const resp = await axios.get('https://graph.facebook.com/v16.0/me', {
       params: { access_token: FB_PAGE_ACCESS_TOKEN }
@@ -53,14 +55,25 @@ export async function processWebhookEvent(senderId: string, recipientId: string,
     const isHoi = trimmed.toLowerCase().startsWith('/hoi ');
     if (!isCommand && !isDirectToPage && !isHoi) return;
 
-    if (mongoose.connection.readyState !== 1) await connectDB();
+    // Try to connect to DB, but don't crash the whole webhook if it fails
+    let dbConnected = false;
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        await connectDB();
+      }
+      dbConnected = true;
+    } catch (err) {
+      console.error('Failed to connect to MongoDB, skipping DB operations:', err);
+    }
 
     // Persist message for analytics/history
-    try {
-      const name = await getUserName(senderId).catch(() => null);
-      await Message.create({ senderId, senderName: name || undefined, text: messageText });
-    } catch (e) {
-      console.error('Failed to record message', e);
+    if (dbConnected) {
+      try {
+        const name = await getUserName(senderId).catch(() => null);
+        await Message.create({ senderId, senderName: name || undefined, text: messageText });
+      } catch (e) {
+        console.error('Failed to record message', e);
+      }
     }
 
     // Dispatch command to modular handlers
@@ -82,7 +95,7 @@ export async function processWebhookEvent(senderId: string, recipientId: string,
           args,
           event,
           send: async (t: string) => await sendFacebookMessage(senderId, t),
-          connectDB,
+          connectDB: async () => mongoose.connection.readyState === 1 ? Promise.resolve() : connectDB(),
           Knowledge,
           Message,
           generateAnswer,

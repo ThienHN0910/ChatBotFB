@@ -86,6 +86,41 @@ Vercel notes
 - Add environment variables in the Vercel project settings: `MONGO_URI`, `FB_VERIFY_TOKEN`, `FB_PAGE_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `OAUTH_REDIRECT` (optional).
 - Optionally add a rewrite in `vercel.json` to map `/dashboard` to `/api/dashboard`.
 
+Commands (bot)
+- `/h` or `/help`: show help and available commands.
+- `/ask <question>`: ask Gemini (RAG+Gen) using knowledge base as context.
+- `/hoi <question>`: alias of `/ask` kept for backwards compatibility.
+- `/mem`: list members from the `authorized_users` collection.
+- `/history`: show knowledge entries that look like historical records (searches `topic`, `content`, and `keywords`).
+
+Dashboard
+- Visit `/dashboard` (or `/api/dashboard`) to open the admin UI. If not logged in you'll see a **Login with Google** button.
+- After login (Google OAuth) users must exist in the `authorized_users` collection to access the dashboard.
+- UI features:
+	- Two tabs: **Knowledge** and **Users**.
+	- Create / Edit / Delete knowledge records (`topic`, `content`, `keywords`).
+	- Create / Edit / Delete users (`email`, `role`).
+
+Development & testing
+- Start local dev server:
+```bash
+npm run dev
+```
+- Create an admin locally (or use `scripts/seed-admin.js`) to insert an authorized user.
+- To simulate a Messenger webhook POST locally, POST JSON to your ngrok-forwarded URL `/api/webhook` with a structure similar to Facebook's messaging event:
+```json
+{
+	"object": "page",
+	"entry": [{ "messaging": [{ "sender": { "id": "USER_ID" }, "message": { "text": "/ask Xin chào" } }] }]
+}
+```
+
+Deployment checklist
+- Ensure Vercel environment variables are set (see above).
+- Push to GitHub; Vercel will auto-deploy if connected.
+- After deploy, check the deployment logs in the Vercel dashboard for errors.
+
+
 **Seed-admin script & security**
 - **Script file**: `scripts/seed-admin.js` — upserts an admin into the `authorized_users` collection. The repository also exposes a protected endpoint at `/api/seed-admin` which checks `SEED_SECRET`.
 - **Run locally (quick)**: ensure `.env` contains a valid `MONGO_URI`, then run:

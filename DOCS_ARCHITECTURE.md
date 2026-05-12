@@ -4,10 +4,10 @@
 
 This repository is split into two active application surfaces:
 
-- Vue 3 SPA frontend at `BotFacebook.Api/BotFacebook.Web`
-- ASP.NET Core 8.0 backend at `BotFacebook.Api/BotFacebook.Api`
+- Vue 3 SPA frontend at `chatbotfbweb/BotFacebook.Web`
+- Node.js backend at `chatbotfbNode`
 
-The original Node/Express source tree was removed from the repo root.
+The old ASP.NET Core backend is no longer the active runtime for this repo.
 
 ## Frontend responsibilities
 
@@ -46,7 +46,7 @@ Key backend endpoints:
 
 ## Configuration
 
-Backend config is split between `appsettings.json` and environment variables.
+Backend config is loaded from environment variables in the Node app.
 
 Important values:
 
@@ -66,7 +66,7 @@ Important values:
 Frontend config:
 
 - `VITE_API_BASE_URL`
-- See `BotFacebook.Api/BotFacebook.Web/.env.example` for the frontend sample file.
+- See `chatbotfbweb/BotFacebook.Web/.env.example` for the frontend sample file.
 
 ## Runtime flow
 
@@ -79,18 +79,18 @@ Frontend config:
 
 ## Build checks
 
-- Backend: `dotnet build BotFacebook.Api/BotFacebook.Api.sln -c Release`
-- Frontend: `cd BotFacebook.Api/BotFacebook.Web && npm run build`
+- Backend: `cd chatbotfbNode && npm run build`
+- Frontend: `cd chatbotfbweb/BotFacebook.Web && npm run build`
 
 ## Deployment notes
 
 - Keep the frontend origin in `Auth__FrontendBaseUrl` so login redirects and CORS stay aligned.
 - If the backend and frontend are deployed separately, the Vue app must point `VITE_API_BASE_URL` at the backend host.
-- The frontend does not replace the webhook endpoint. The webhook still lives in ASP.NET Core.
+- The webhook endpoint lives in the Node backend. If Facebook is pointed at the Vercel frontend domain, Vercel must proxy `/webhook` and `/api/*` back to the backend.
 - Current production hosts:
-	- Frontend: `https://chat-bot-fb-lime.vercel.app`
+	- Frontend: `https://chat-bot-fb-web.vercel.app`
 	- Backend: `https://chatbotfb-production.up.railway.app`
 - Smoke test after deploy:
-	- `GET /` on Railway should return the API health payload.
+	- `GET /` on Railway should return the Node service health payload.
 	- `GET /api/auth` on Railway should redirect to Google, not 404.
 	- `GET /api/dashboard` without a cookie should return 401, not 404.

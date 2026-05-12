@@ -1,11 +1,11 @@
-# BotFacebook Migration
+# BotFacebook
 
-This repository now uses a Vue 3 frontend plus an ASP.NET Core Web API backend.
+This repository now runs as a Vue 3 frontend plus a Node.js backend rewrite.
 
 ## Layout
 
-- `BotFacebook.Api/BotFacebook.Api` - ASP.NET Core 8 backend for webhook, dashboard API, auth, MongoDB, and Gemini/Facebook integration.
-- `BotFacebook.Api/BotFacebook.Web` - Vue 3 SPA for the public pages and admin dashboard.
+- `chatbotfbNode` - Node.js backend for webhook, dashboard API, auth, MongoDB, Gemini, and Facebook integration.
+- `chatbotfbweb/BotFacebook.Web` - Vue 3 SPA for the public pages and admin dashboard.
 
 ## What the app does
 
@@ -13,11 +13,11 @@ This repository now uses a Vue 3 frontend plus an ASP.NET Core Web API backend.
 - Dashboard CRUD for knowledge base and authorized users.
 - Google login for the dashboard with cookie-based session auth.
 - Public `/policy` and `/term` pages in Vue.
-- Bot command support kept in the backend: `/ask`, `/time`, `/keo`, `/mem`, `/top`, `/history`, `/help`, and related aliases.
+- Bot command support in the Node backend: `/ask`, `/about`, `/echo`, `/time`, `/uptime`, `/ping`, `/me`, `/fb`, `/link`, `/random`, `/mem`, `/top`, `/history`, `/help`.
 
 ## Backend setup
 
-Environment values are loaded from `.env` and appsettings. Use `__` in environment variable names when targeting nested config sections.
+Environment values are loaded from `.env`. Use `__` in environment variable names when targeting nested config sections.
 
 Examples:
 
@@ -26,6 +26,7 @@ Examples:
 - `Facebook__PageAccessToken`
 - `Facebook__PageId`
 - `Facebook__GraphApiVersion`
+- `Facebook__AppSecret`
 - `Gemini__ApiKey`
 - `Webhook__VerifyToken`
 - `Auth__GoogleClientId`
@@ -37,8 +38,17 @@ Examples:
 Run the backend:
 
 ```bash
-dotnet build BotFacebook.Api/BotFacebook.Api.sln -c Release
-dotnet run --project BotFacebook.Api/BotFacebook.Api/BotFacebook.Api.csproj
+cd chatbotfbNode
+npm install
+npm run dev
+```
+
+Build the backend:
+
+```bash
+cd chatbotfbNode
+npm run build
+npm start
 ```
 
 ## Frontend setup
@@ -47,7 +57,7 @@ The Vue app calls the backend API with `credentials: include`, so set the API ba
 
 Example file:
 
-- `BotFacebook.Api/BotFacebook.Web/.env.example`
+- `chatbotfbweb/BotFacebook.Web/.env.example`
 
 Example:
 
@@ -55,7 +65,7 @@ Example:
 
 Current production split:
 
-- Frontend: `https://chat-bot-fb-lime.vercel.app`
+- Frontend: `https://chat-bot-fb-web.vercel.app`
 - Backend: `https://chatbotfb-production.up.railway.app`
 
 If you deploy frontend and backend on the same origin, the app can still fall back to relative `/api/...` URLs when `VITE_API_BASE_URL` is omitted.
@@ -63,7 +73,7 @@ If you deploy frontend and backend on the same origin, the app can still fall ba
 Run the frontend:
 
 ```bash
-cd BotFacebook.Api/BotFacebook.Web
+cd chatbotfbweb/BotFacebook.Web
 npm install
 npm run dev
 ```
@@ -71,13 +81,14 @@ npm run dev
 Build the frontend:
 
 ```bash
-cd BotFacebook.Api/BotFacebook.Web
+cd chatbotfbweb/BotFacebook.Web
 npm run build
 ```
 
 ## Notes
 
-- The old Node/Express source was removed from the root of this repo.
-- The dashboard login flow redirects back to the Vue route `/dashboard`.
-- `FrontendBaseUrl` in the backend auth settings must match the Vue app origin for CORS and post-login redirects.
-- If `GET /api/auth` returns 404 on Railway, the backend deployment is not running this repo's ASP.NET app and must be redeployed from `BotFacebook.Api/BotFacebook.Api.csproj`.
+- The Node backend keeps the original API shape so the Facebook webhook, admin dashboard, and bot commands can be swapped in without changing the external flow.
+- The Facebook callback URL can point to either `/webhook` or `/api/webhook`, but it must target the backend domain, not the frontend Vercel site.
+- Webhook signature verification is supported when `Facebook__AppSecret` is set.
+- The app fails fast on weak or missing `Auth__SessionSecret` values instead of silently booting with the old default.
+- The dashboard and auth cookies rely on the backend being served behind HTTPS in production.

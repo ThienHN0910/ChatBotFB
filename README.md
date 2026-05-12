@@ -15,6 +15,12 @@ This repository now runs as a Vue 3 frontend plus a Node.js backend rewrite.
 - Public `/policy` and `/term` pages in Vue.
 - Bot command support in the Node backend: `/ask`, `/about`, `/echo`, `/time`, `/uptime`, `/ping`, `/me`, `/fb`, `/link`, `/random`, `/mem`, `/top`, `/history`, `/help`.
 
+## Frontend notes
+
+- Vue routes are lazy-loaded to keep the initial bundle smaller.
+- The home page now reflects the current bot command list and the Node backend runtime.
+- `VITE_API_BASE_URL` should point at the backend host when frontend and backend are deployed separately.
+
 ## Backend setup
 
 Environment values are loaded from `.env`. Use `__` in environment variable names when targeting nested config sections.
@@ -69,6 +75,8 @@ Current production split:
 - Backend: `https://chatbotfb-production.up.railway.app`
 
 If you deploy frontend and backend on the same origin, the app can still fall back to relative `/api/...` URLs when `VITE_API_BASE_URL` is omitted.
+
+The frontend login/logout and dashboard requests are all cookie-based, so the backend must allow credentials and be reachable over HTTPS in production.
 
 Run the frontend:
 

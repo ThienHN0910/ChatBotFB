@@ -15,6 +15,7 @@ The old ASP.NET Core backend is no longer the active runtime for this repo.
 - Call backend endpoints with `fetch` and `credentials: include`.
 - Use `VITE_API_BASE_URL` to point at the backend host.
 - If `VITE_API_BASE_URL` is omitted, the frontend uses relative `/api/...` URLs, which only works when the frontend is served from the same origin as the backend.
+- Lazy-load route components so the initial frontend payload stays smaller.
 - Redirect login/logout actions through backend auth endpoints.
 
 Key routes:
@@ -71,7 +72,7 @@ Frontend config:
 ## Runtime flow
 
 1. User opens the Vue app.
-2. Dashboard calls backend JSON endpoints.
+2. Route components load on demand and the dashboard calls backend JSON endpoints.
 3. If the session is missing, the frontend shows a Google login button.
 4. Google OAuth returns to the backend callback.
 5. Backend validates the email against MongoDB, sets the cookie session, and redirects to the Vue `/dashboard` route.

@@ -11,7 +11,7 @@ public sealed class HelpCommandHandler : IBotCommandHandler
         var helpLines = new[]
         {
             "/ask <question> - Hỏi Gemini (RAG + AI)",
-            "/time, /gio, /keo - Trả về giờ hệ thống (Asia/Ho_Chi_Minh)",
+            "/time- Trả về giờ hệ thống (Asia/Ho_Chi_Minh)",
             "/ping - Kiểm tra độ trễ",
             "/fb, /link - Trả về links của Động",
             "/me - Hiển thị tên Facebook và ID của bạn",
